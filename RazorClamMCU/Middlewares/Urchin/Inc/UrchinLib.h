@@ -13104,4 +13104,8 @@ void SetSrkTemplate(
 TPM2B_PUBLIC *publicArea         // OUT: public area of SRK object
 );
 
+#ifdef URCHIN_DEBUG
+extern uint8_t EnableUrchinDebugSpew;
+#endif
+
 #endif // __URCHIN_H__

@@ -30,6 +30,35 @@ THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #define UNDEFINED_INDEX (-1)
 
+#ifdef URCHIN_DEBUG
+#include <stdio.h>
+uint8_t EnableUrchinDebugSpew = 0;
+static void
+UrchinPrintBuffer(char* label, uint8_t* dataPtr, uint32_t dataSize)
+{
+    if(!EnableUrchinDebugSpew) return;
+    printf("uint8_t %s[%u] = {\r\n", label, (unsigned int)dataSize);
+    for(uint32_t n = 0; n < dataSize; n++)
+    {
+        if(n > 0)
+        {
+            if((n % 16) == 0)
+            {
+                printf(",\r\n");
+            }
+            else
+            {
+                printf(", ");
+            }
+        }
+        printf("0x%02x", dataPtr[n]);
+    }
+    printf("\r\n};\r\n");
+}
+#else
+#define UrchinPrintBuffer(a, b, c)
+#endif
+
 //*** PolicyUpdate()
 // Update policy hash
 //      Update the policyDigest in policy session by extending policyRef and
@@ -1978,6 +2007,8 @@ Command_Marshal(
                 MemoryRemoveTrailingZeros(&extraKey);
             }
 
+            UrchinPrintBuffer("DecParm", (uint8_t*)requestParameterBuffer, (requestParameterBuffer[0] << 8) + requestParameterBuffer[1]);
+
             // Encrypt the first parameter
             CryptParameterEncryption(&sessionTable[i],
                                      (TPM2B*)&sessionTable[i].nonceCaller,
@@ -2016,6 +2047,8 @@ Command_Marshal(
         }
         pAssert((size == NULL) || (*size >= 0));
     }
+
+    UrchinPrintBuffer("TPMCMD", *buffer - (headerSize + sessionSize + parameterSize), (headerSize + sessionSize + parameterSize));
     return (UINT16)(headerSize + sessionSize + parameterSize);
 }
 
@@ -2044,6 +2077,8 @@ Command_Unmarshal(
     UINT32 headerSize = sizeof(TPMI_ST_COMMAND_TAG)+sizeof(UINT32)+sizeof(TPM_RC);
     UINT32 sessionSize = 0;
     UINT32 parameterSize = 0;
+
+    UrchinPrintBuffer("TPMRSP", *buffer, *size);
 
     // Are session allowed?
     if ((!IsSessionAllowed(command_code)) && (sessionCnt != 0)) return TPM_RC_FAILURE;
@@ -2132,6 +2167,8 @@ Command_Unmarshal(
                                          (UINT16)EncryptSize(command_code),
                                          &extraKey,
                                          parameterPtr);
+
+                UrchinPrintBuffer("EncParm", parameterPtr, (parameterPtr[0] << 8) + parameterPtr[1]);
 
                 // Only one encryption session is defined - we are done after the first one
                 break;

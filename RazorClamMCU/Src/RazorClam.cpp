@@ -1142,12 +1142,26 @@ ProtectPlatformData(
     // Perform the encryption or decryption
     sessionTable[0] = policySession;
     sessionTable[0].attributes.continueSession = NO; // Terminate the session with this command
+
+    // Lotsa red tape here:
     // Oddly clear text protection on the encrypt path is not supported in the specification.
-    // DWooten said he will add a new command to teh spec that does support that
-    if(decrypt == YES) // protect the clear text on the wire
+    // DWooten said this was an oversight in the spec and the response parameters are ordered
+    // wrong. Unfortunately there is no hope for TPM2_EncryptDecrypt() and he will add a new
+    // command TPM2_EncryptDecrypt2() that only differs by the response parameter ordering.
+    // This means that at provisioning time a physically present attacker will be able to read
+    // the new authValues when they are encrypted that one time. The result is that a commercial
+    // RazorClam system can never be re-provisioned (cleared) because we do not know in whose hands
+    // the authValues will be encrypted.
+    if(decrypt == YES)
     {
+#ifndef STMTPM
+        // This is bad. Parameter encryption seems to be problematic on the STM TPM with this
+        // command. Not using parameter encryption will expose the authValues on the bus on every
+        // boot. RazorClam can definitely not ship like this.
         sessionTable[0].attributes.encrypt = YES;
+#endif
     }
+
     INITIALIZE_CALL_BUFFERS(TPM2_EncryptDecrypt, &in.encryptDecrypt, &out.encryptDecrypt);
     parms.objectTableIn[TPM2_EncryptDecrypt_HdlIn_KeyHandle] = aesKey;
     in.encryptDecrypt.inData.t.size = dataSize;
