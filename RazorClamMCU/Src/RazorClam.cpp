@@ -1154,12 +1154,7 @@ ProtectPlatformData(
     // the authValues will be encrypted.
     if(decrypt == YES)
     {
-#ifndef STMTPM
-        // This is bad. Parameter encryption seems to be problematic on the STM TPM with this
-        // command. Not using parameter encryption will expose the authValues on the bus on every
-        // boot. RazorClam can definitely not ship like this.
         sessionTable[0].attributes.encrypt = YES;
-#endif
     }
 
     INITIALIZE_CALL_BUFFERS(TPM2_EncryptDecrypt, &in.encryptDecrypt, &out.encryptDecrypt);

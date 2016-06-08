@@ -25,6 +25,10 @@ THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #ifndef _BASETYPES_H
 #define _BASETYPES_H
 
+#ifdef STMTPM
+#define TPMERRATA212
+#endif
+
 typedef uint8_t                  UINT8;
 typedef uint8_t                  BYTE;
 typedef int8_t                   INT8;

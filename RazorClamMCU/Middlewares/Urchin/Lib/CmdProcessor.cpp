@@ -2001,7 +2001,11 @@ Command_Marshal(
             TPM2B_AUTH extraKey = {0};
 
             if((i < parms->objectCntIn) // Session associated to object
+#ifndef TPMERRATA212
                 && (IsAuthValueAvailable(&parms->objectTableIn[i], command_code)))
+#else
+                    )
+#endif
             {
                 MemoryCopy2B((TPM2B*)&extraKey, (TPM2B*)&parms->objectTableIn[i].obj.authValue, sizeof(extraKey.t.buffer));
                 MemoryRemoveTrailingZeros(&extraKey);
@@ -2154,7 +2158,11 @@ Command_Unmarshal(
                 TPM2B_AUTH extraKey = {0};
 
                 if((i < parms->objectCntIn) // Session associated to object
+#ifndef TPMERRATA212
                     && (IsAuthValueAvailable(&parms->objectTableIn[i], command_code)))
+#else
+                    )
+#endif
                 {
                     MemoryCopy2B((TPM2B*)&extraKey, (TPM2B*)&parms->objectTableIn[i].obj.authValue, sizeof(extraKey.t.buffer));
                     MemoryRemoveTrailingZeros(&extraKey);

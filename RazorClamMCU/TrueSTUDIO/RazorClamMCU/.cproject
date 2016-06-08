@@ -63,8 +63,9 @@
 									<listOptionValue builtIn="false" value="STM32F429xx"/>
 									<listOptionValue builtIn="false" value="TPMI2CBUSHANDLE=hi2c2"/>
 									<listOptionValue builtIn="false" value="WOLFSSL_USER_SETTINGS"/>
-									<listOptionValue builtIn="false" value="NTZTPM"/>
-									<listOptionValue builtIn="false" value="NTZI2C"/>
+									<listOptionValue builtIn="false" value="STMTPM"/>
+									<listOptionValue builtIn="false" value="TISI2C"/>
+									<listOptionValue builtIn="false" value="URCHIN_DEBUG=1"/>
 								</option>
 								<inputType id="com.atollic.truestudio.as.input.374932590" name="Input" superClass="com.atollic.truestudio.as.input"/>
 							</tool>
@@ -102,8 +103,9 @@
 									<listOptionValue builtIn="false" value="STM32F429xx"/>
 									<listOptionValue builtIn="false" value="TPMI2CBUSHANDLE=hi2c2"/>
 									<listOptionValue builtIn="false" value="WOLFSSL_USER_SETTINGS"/>
-									<listOptionValue builtIn="false" value="NTZTPM"/>
-									<listOptionValue builtIn="false" value="NTZI2C"/>
+									<listOptionValue builtIn="false" value="STMTPM"/>
+									<listOptionValue builtIn="false" value="TISI2C"/>
+									<listOptionValue builtIn="false" value="URCHIN_DEBUG=1"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1854274048" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" value="com.atollic.truestudio.common_options.target.endianess.little" valueType="enumerated"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.191909026" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" value="STM32F429ZI" valueType="enumerated"/>
@@ -141,8 +143,9 @@
 									<listOptionValue builtIn="false" value="STM32F429xx"/>
 									<listOptionValue builtIn="false" value="TPMI2CBUSHANDLE=hi2c2"/>
 									<listOptionValue builtIn="false" value="WOLFSSL_USER_SETTINGS"/>
-									<listOptionValue builtIn="false" value="NTZTPM"/>
-									<listOptionValue builtIn="false" value="NTZI2C"/>
+									<listOptionValue builtIn="false" value="STMTPM"/>
+									<listOptionValue builtIn="false" value="TISI2C"/>
+									<listOptionValue builtIn="false" value="URCHIN_DEBUG=1"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.176262651" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" value="com.atollic.truestudio.common_options.target.endianess.little" valueType="enumerated"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.630487808" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" value="STM32F429ZI" valueType="enumerated"/>
