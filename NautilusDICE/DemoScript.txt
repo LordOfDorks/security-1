@@ -1,0 +1,230 @@
+#Preparation:
+- Get NUCLEO-L031K6 and replace the MCU with pin-compatible STM32L082KZ
+- Connect Programming Button PB4(Pin15) and 3V3(Pin14)
+- Connect USB cable Red to VIN(Pin1), Black to GND(Pin2), Green to PA12 and White to PA11
+- Connect 100nf VIN(Pin1), Black to GND(Pin2)
+- Upgrade debugger on Nucleo board https://www.segger.com/jlink-st-link.html
+cd Manufacture
+del *.DFU
+del *.TPMKEY
+start c:\NautilusDice\Manufacture\simulator.exe
+"C:\Program Files (x86)\SEGGER\JLink_V600g\JFlashLite.exe"
+- Select STM32L082KZ
+- Erase device
+
+#Built manufacturing tools:
+- Get TPM 2.0 Simulator and run https://www.microsoft.com/en-us/download/details.aspx?id=52507
+- DfuSe\DfuSe.sln with VS (Lots of warnings)
+- DicePrep\DivePrep.sln with VS
+- Copy {simulator.exe, DfuSeDemo.exe, STDFU.dll, STDFUFiles.dll, STFUPRT.dll, STTubeDevice30.dll, DicePrep.exe, TSS.CPP.dll} to folder manufacture
+- launch simulator.exe
+
+#Create DeviceID package:
+DicePrep.exe CDP 0123456789abcdef0123456789abcdef 00112233445566778899aabbccddeeff
+--- Output(Begin) ---
+Storage Prefix: C:\NautilusDice\Manufacture\
+---- ProtectedData ------------------------------------------------
+Tag:            DICE
+Size:           256
+Version:        0.1
+Date:           2016.8.30-0:55:47
+Model:          Nautilus-STM32L082KZ
+Serial:         SN12345678
+Manufacturer:   StefanTh@Microsoft.com
+URL:            http://WindowsOnDevices.com
+---- Identities & Names -------------------------------------------
+DeviceID:                 PROVISIONED
+DeviceRootName[16]:       79abc5c23868ad84d388ce61110a6274
+ManufacturerID:           LOCKED
+ManufacturerRootName[16]: fde4fbae4a09e020eff722969f83832b
+AppStrongName:            UNLOCKED
+-------------------------------------------------------------------
+--- Output(End) ---
+
+#Connect debug Console for debug output:
+- Example: Putty COM3@115200
+
+#Compile and deploy L0Dice:
+start C:\NautilusDice\L0Dice\MDK-ARM\L0Dice.uvprojx
+- Rebuild target
+"C:\Program Files (x86)\SEGGER\JLink_V600g\JFlashLite.exe"
+- Erase device
+- Program C:\NautilusDice\L0Dice\MDK-ARM\L0Dice\L0Dice.hex
+- Green LDE blinks twice periodically
+
+Firmware Uprade Tool to deploy the device Identity:
+start C:\NautilusDice\DfuSe\Binary\Release\DfuSeDemo.exe
+- Chose D:\NautilusDice\Manufacture\DiceIdPkg.dfu and program
+- Reset the device with the reset button while holding the FWupdate button
+--- Output(Begin) ---
+---- ApplicationInfo ----------------------------------------------
+-------------------------------------------------------------------
+---- VolatileData -------------------------------------------------
+          DeviceRootName[16]: 00000000000000000000000000000000
+      DeviceCompoundName[16]: 00000000000000000000000000000000
+    ManufacturerRootName[16]: 00000000000000000000000000000000
+ManufacturerCompoundName[16]: 00000000000000000000000000000000
+           AppStrongName[16]: 00000000000000000000000000000000
+            OperatorName[16]: 00000000000000000000000000000000
+-------------------------------------------------------------------
+App payload is *INVALID*
+Persisted device data is *UNINITIALIZED*
+==== Starting USB DFU Mode ==========================================
+Scrubing derived identities from memory...
+Starting USB DFU stack...
+Reboot to exit DFU...
+MEM_If_Init_FS() = USBD_OK
+MEM_If_DeInit_FS() = USBD_OK
+MEM_If_Init_FS() = USBD_OK
+MEM_If_DeInit_FS() = USBD_OK
+MEM_If_Init_FS() = USBD_OK
+MEM_If_GetStatus_FS(0x08000000, 1, 0x200007b9)
+MEM_If_GetStatus_FS(0x08008000, 1, 0x200007b9)
+MEM_If_Write_FS(0x200003b8, 0x08008000, 256) = USBD_OK
+--- Output(End) ---
+
+- After reboot:
+--- Output(Begin) ---
+---- ProtectedData ------------------------------------------------
+Tag:            DICE
+Size:           256
+Version:        0.1
+Date:           Sun Nov 13 22:52:18 2016
+Model:          Nautilus-STM32L082KZ
+Serial:         SN12345678
+Manufacturer:   StefanTh@Microsoft.com
+URL:            http://WindowsOnDevices.com
+ManufacturerID: LOCKED
+AppStrongName:  UNLOCKED
+-------------------------------------------------------------------
+---- ApplicationInfo ----------------------------------------------
+-------------------------------------------------------------------
+---- VolatileData -------------------------------------------------
+          DeviceRootName[16]: 79abc5c23868ad84d388ce61110a6274
+      DeviceCompoundName[16]: 00000000000000000000000000000000
+    ManufacturerRootName[16]: fde4fbae4a09e020eff722969f83832b
+ManufacturerCompoundName[16]: 00000000000000000000000000000000
+           AppStrongName[16]: 00000000000000000000000000000000
+            OperatorName[16]: 00000000000000000000000000000000
+-------------------------------------------------------------------
+App payload is *INVALID*
+Persisted device data is *SECURED*
+==== Starting USB DFU Mode ==========================================
+Scrubing derived identities from memory...
+Starting USB DFU stack...
+Reboot to exit DFU...
+MEM_If_Init_FS() = USBD_OK
+--- Output(End) ---
+
+#Compile the payload:
+start C:\NautilusDice\Payload\MDK-ARM\Payload.uvprojx
+- Rebuild target
+
+#Create code identities:
+DicePrep.exe CAP ..\Payload\MDK-ARM\Payload\Payload.hex fde4fbae4a09e020eff722969f83832b 11112222333344445555666677778888 aaaa5555aaaa5555aaaa5555aaaa5555
+--- Output(Begin) ---
+Storage Prefix: .\
+---- ApplicationInfo ----------------------------------------------
+Tag:          DAPP
+Size:         32768
+Version:      0.1
+Date:         2016.11.13-22:59:39
+Name:         Payload
+Manufacturer: StefanTh@Microsoft.com
+-------------------------------------------------------------------
+AppStrongName[16]:            f78903fddde6100819d52f5ef672a340
+ManufacturerRootName[16]:     fde4fbae4a09e020eff722969f83832b
+ManufacturerSalt[16]:         11112222333344445555666677778888
+ManufacturerCompoundName[16]: ef4d1b63bb72ef886322e5fc435bbd08
+EncOperatorId[16]:            ce18eb0f80017e6414bc0a17934a7e07
+OperatorName[16]:             e9f3934badfeeff09025e3dee4c8fb5d
+-------------------------------------------------------------------
+Authorization[16]:            26ad4ea5df4d0d57b4170b01e6b40657
+-------------------------------------------------------------------
+--- Output(End) ---
+
+#Firmware Upgrade Tool to deploy payload:
+start C:\NautilusDice\DfuSe\Binary\Release\DfuSeDemo.exe
+- Chose D:\NautilusDice\Manufacture\DiceFwPkg.dfu and program
+
+#Pre-calculate the expected DeviceCompoundName and key from DeviceRootId with AppStrongName:
+DicePrep.exe DTI 79abc5c23868ad84d388ce61110a6274 f78903fddde6100819d52f5ef672a340
+--- Output(Begin) ---
+Storage Prefix: Manufacture\
+NewCompoundName[16]: 843c7013cd913b2c56dcaf318e126f5b
+--- Output(End) ---
+
+#Pre-calculate the expected ManufacturerCompoundName and key from manufacturerID with manufacturerSalt:
+DicePrep.exe DTI fde4fbae4a09e020eff722969f83832b 11112222333344445555666677778888
+--- Output(Begin) ---
+Storage Prefix: Manufacture\
+NewCompoundName[16]: ef4d1b63bb72ef886322e5fc435bbd08
+--- Output(End) ---
+
+#Reset the device with the reset button and let it start the application:
+--- Output(Begin) ---
+---- ProtectedData ------------------------------------------------
+Tag:            DICE
+Size:           256
+Version:        0.1
+Date:           Mon Nov 14 17:13:16 2016
+Model:          Nautilus-STM32L082KZ
+Serial:         SN12345678
+Manufacturer:   StefanTh@Microsoft.com
+URL:            http://WindowsOnDevices.com
+ManufacturerID: LOCKED
+AppStrongName:  UNLOCKED
+-------------------------------------------------------------------
+---- ApplicationInfo ----------------------------------------------
+         Tag: DAPP
+        Size: 32768
+     Version: 0.1
+        Date: Mon Nov 14 17:14:14 2016
+        Name: Payload
+Manufacturer: StefanTh@Microsoft.com
+      strongName[16]: f78903fddde6100819d52f5ef672a340
+manufacturerSalt[16]: 11112222333344445555666677778888
+   encOperatorId[16]: ce18eb0f80017e6414bc0a17934a7e07
+   authorization[16]: bde245fb16167f4d7d6004bf556f7cc5
+-------------------------------------------------------------------
+---- VolatileData -------------------------------------------------
+          DeviceRootName[16]: 79abc5c23868ad84d388ce61110a6274
+      DeviceCompoundName[16]: 843c7013cd913b2c56dcaf318e126f5b
+    ManufacturerRootName[16]: fde4fbae4a09e020eff722969f83832b
+ManufacturerCompoundName[16]: ef4d1b63bb72ef886322e5fc435bbd08
+           AppStrongName[16]: f78903fddde6100819d52f5ef672a340
+            OperatorName[16]: e9f3934badfeeff09025e3dee4c8fb5d
+-------------------------------------------------------------------
+App payload is *AUTHORIZED*
+Persisted device data is *SECURED*
+==== Action: Application Launch =====================================
+DeInitializing HAL
+#####################################################################
+##  BlinkyBlink running @ 0x08008200
+#####################################################################
+XXXX ProtectedData: LOCKED XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+---- ApplicationInfo ----------------------------------------------
+         Tag: DAPP
+        Size: 32768
+     Version: 0.1
+        Date: Mon Nov 14 17:14:14 2016
+        Name: Payload
+Manufacturer: StefanTh@Microsoft.com
+      strongName[16]: f78903fddde6100819d52f5ef672a340
+manufacturerSalt[16]: 11112222333344445555666677778888
+   encOperatorId[16]: ce18eb0f80017e6414bc0a17934a7e07
+   authorization[16]: bde245fb16167f4d7d6004bf556f7cc5
+-------------------------------------------------------------------
+---- VolatileData -------------------------------------------------
+          DeviceRootName[16]: 79abc5c23868ad84d388ce61110a6274
+      DeviceCompoundName[16]: 843c7013cd913b2c56dcaf318e126f5b
+    ManufacturerRootName[16]: fde4fbae4a09e020eff722969f83832b
+ManufacturerCompoundName[16]: ef4d1b63bb72ef886322e5fc435bbd08
+           AppStrongName[16]: f78903fddde6100819d52f5ef672a340
+            OperatorName[16]: e9f3934badfeeff09025e3dee4c8fb5d
+-------------------------------------------------------------------
+USB_CDC: RTS=0, DTR=0GPIO_LD3: ON
+[2066.00.01-00:02:35]GPIO_LD3: OFF
+--- Output(End) ---
+
+Any questions --> S@LordOfDorks.com or @LordOfDorks
