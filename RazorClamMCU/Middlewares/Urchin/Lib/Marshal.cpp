@@ -5306,6 +5306,31 @@ TPM2B_PRIVATE_Marshal(TPM2B_PRIVATE *source, BYTE **buffer, INT32 *size)
     return result;
 }
 
+// Table 2:193 - Definition of TPM2B_TEMPLATE Structure (StructureTable)
+TPM_RC
+TPM2B_TEMPLATE_Unmarshal(TPM2B_TEMPLATE *target, BYTE **buffer, INT32 *size)
+{
+    TPM_RC    result;
+    result = UINT16_Unmarshal((UINT16 *)&(target->t.size), buffer, size);
+    if(result != TPM_RC_SUCCESS)
+        return result;
+    if((target->t.size) > sizeof(TPMT_PUBLIC))
+        return TPM_RC_SIZE;
+    result = BYTE_Array_Unmarshal((BYTE *)(target->t.buffer), buffer, size, (INT32)(target->t.size));
+    return result;
+}
+
+UINT16
+TPM2B_TEMPLATE_Marshal(TPM2B_TEMPLATE *source, BYTE **buffer, INT32 *size)
+{
+    UINT16    result = 0;
+    result = (UINT16)(result + UINT16_Marshal((UINT16 *)&(source->t.size), buffer, size));
+    // if size equal to 0, the rest of the structure is a zero buffer.  Stop processing
+    if(source->t.size == 0)
+        return result;
+    result = (UINT16)(result + BYTE_Array_Marshal((BYTE *)(source->t.buffer), buffer, size, (INT32)(source->t.size)));
+    return result;
+}
 
 // Table 192 -- TPM2B_ID_OBJECT Structure <I/O>
 TPM_RC

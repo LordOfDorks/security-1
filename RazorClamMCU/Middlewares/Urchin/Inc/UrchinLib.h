@@ -295,6 +295,11 @@ typedef struct {
 #define    CC_VerifySignature               YES    // 1
 #define    CC_ZGen_2Phase                   YES    // 1
 #define    CC_EC_Ephemeral                  YES    // 1
+#define    CC_PolicyNVWritten               YES    // 1
+#define    CC_PolicyTemplate                YES    // 1
+#define    CC_CreateLoaded                  YES    // 1
+#define    CC_PolicyAuthorizeNV             YES    // 1
+#define    CC_EncryptDecrypt2               YES    // 1
 
 
 // Table 215 -- RSA Algorithm Constants
@@ -720,7 +725,12 @@ typedef UINT32 TPM_CC;
 #define    TPM_CC_PolicyPassword                (TPM_CC)(0x0000018C)    
 #define    TPM_CC_ZGen_2Phase                   (TPM_CC)(0x0000018D)    
 #define    TPM_CC_EC_Ephemeral                  (TPM_CC)(0x0000018E)    
-#define    TPM_CC_LAST                          (TPM_CC)(0x0000018E)    
+#define    TPM_CC_PolicyNVWritten               (TPM_CC)(0x0000018F)    
+#define    TPM_CC_PolicyTemplate                (TPM_CC)(0x00000190)    
+#define    TPM_CC_CreateLoaded                  (TPM_CC)(0x00000191)    
+#define    TPM_CC_PolicyAuthorizeNV             (TPM_CC)(0x00000192)    
+#define    TPM_CC_EncryptDecrypt2               (TPM_CC)(0x00000193)    
+#define    TPM_CC_LAST                          (TPM_CC)(0x00000193)    
 
 
 // Table 15 -- TPM_RC Constants <O,S>
@@ -2331,6 +2341,16 @@ typedef union {
     PUBLIC_2B    t;
     TPM2B        b;
 } TPM2B_PUBLIC;
+
+// Table 2:193 - Definition of TPM2B_TEMPLATE Structure (StructuresTable)
+typedef union {
+    struct {
+        UINT16                  size;
+        BYTE                    buffer[sizeof(TPMT_PUBLIC)];
+    }            t;
+    TPM2B        b;
+} TPM2B_TEMPLATE;
+
 typedef struct {
     UINT16    size;
     BYTE      buffer[PRIVATE_VENDOR_SPECIFIC_BYTES];
@@ -5035,6 +5055,11 @@ TPM2B_PUBLIC_Marshal(TPM2B_PUBLIC *source, BYTE **buffer, INT32 *size);
 TPM_RC
 TPM2B_PUBLIC_Unmarshal(TPM2B_PUBLIC *target, BYTE **buffer, INT32 *size, BOOL flag);
 
+// Table 2:193 - Definition of TPM2B_TEMPLATE Structure (StructureTable)
+TPM_RC
+TPM2B_TEMPLATE_Unmarshal(TPM2B_TEMPLATE *target, BYTE **buffer, INT32 *size);
+UINT16
+TPM2B_TEMPLATE_Marshal(TPM2B_TEMPLATE *source, BYTE **buffer, INT32 *size);
 
 
 // Table 186 -- TPMU_SENSITIVE_COMPOSITE Union <I/O,S>
@@ -12944,6 +12969,288 @@ INT32 *size
 );
 
 #endif //_ZGEN_2PHASE_H
+
+#ifndef _POLICYNVWRITTEN_H
+#define _POLICYNVWRITTEN_H
+
+#define TPM2_PolicyNVWritten_HdlIn_PolicySession  (0)
+#define TPM2_PolicyNVWritten_HdlCntIn  (1)
+#define TPM2_PolicyNVWritten_HdlCntOut  (0)
+#define TPM2_PolicyNVWritten_SessionCnt  (0)
+
+typedef struct {
+    TPMI_YES_NO       writtenSet;
+} PolicyNVWritten_In;
+
+typedef struct {
+    BYTE nothing;
+} PolicyNVWritten_Out;
+
+UINT16
+TPM2_PolicyNVWritten_Marshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_PolicyNVWritten_Unmarshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+UINT16
+TPM2_PolicyNVWritten_Parameter_Marshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_PolicyNVWritten_Parameter_Unmarshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+void
+TPM2_PolicyNVWritten_CalculateUpdate(
+TPM_ALG_ID hashAlg,
+TPM2B_DIGEST *policyDigest,
+PolicyNVWritten_In *policyNVWritten_In
+);
+
+#endif //_POLICYNVWRITTEN
+
+#ifndef _POLICYTEMPLATE_H
+#define _POLICYTEMPLATE_H
+
+#define TPM2_PolicyTemplate_HdlIn_PolicySession  (0)
+#define TPM2_PolicyTemplate_HdlCntIn  (1)
+#define TPM2_PolicyTemplate_HdlCntOut  (0)
+#define TPM2_PolicyTemplate_SessionCnt  (0)
+
+typedef struct {
+    TPM2B_DIGEST      templateHash;
+} PolicyTemplate_In;
+
+typedef struct {
+    BYTE nothing;
+} PolicyTemplate_Out;
+
+UINT16
+TPM2_PolicyTemplate_Marshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_PolicyTemplate_Unmarshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+UINT16
+TPM2_PolicyTemplate_Parameter_Marshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_PolicyTemplate_Parameter_Unmarshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+void
+TPM2_PolicyTemplate_CalculateUpdate(
+TPM_ALG_ID hashAlg,
+TPM2B_DIGEST *policyDigest,
+PolicyTemplate_In *policyTemplate_In
+);
+
+#endif //_POLICYTEMPLATE
+
+#ifndef _CREATELOADED_H
+#define _CREATELOADED_H
+
+#define TPM2_CreateLoaded_HdlIn_ParentHandle  (0)
+#define TPM2_CreateLoaded_HdlCntIn  (1)
+#define TPM2_CreateLoaded_HdlOut_ObjectHandle  (0)
+#define TPM2_CreateLoaded_HdlCntOut  (1)
+#define TPM2_CreateLoaded_SessionCnt  (1)
+
+typedef struct {
+    TPM2B_SENSITIVE_CREATE    inSensitive;
+    TPM2B_TEMPLATE            inPublic;
+} CreateLoaded_In;
+
+typedef struct {
+    TPM2B_PRIVATE             outPrivate;
+    TPM2B_PUBLIC              outPublic;
+    TPM2B_NAME                name;
+} CreateLoaded_Out;
+
+UINT16
+TPM2_CreateLoaded_Marshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_CreateLoaded_Unmarshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+UINT16
+TPM2_CreateLoaded_Parameter_Marshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_CreateLoaded_Parameter_Unmarshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+#endif //_CREATELOADED
+
+#ifndef _POLICYAUTHORIZENV_H
+#define _POLICYAUTHORIZENV_H
+
+#define TPM2_PolicyAuthorizeNV_HdlIn_AuthHandle  (0)
+#define TPM2_PolicyAuthorizeNV_HdlIn_NvIndex  (1)
+#define TPM2_PolicyAuthorizeNV_HdlIn_PolicySession  (2)
+#define TPM2_PolicyAuthorizeNV_HdlCntIn  (3)
+#define TPM2_PolicyAuthorizeNV_HdlCntOut  (0)
+#define TPM2_PolicyAuthorizeNV_SessionCnt  (1)
+
+typedef struct {
+    BYTE nothing;
+} PolicyAuthorizeNV_In;
+
+typedef struct {
+    BYTE nothing;
+} PolicyAuthorizeNV_Out;
+
+UINT16
+TPM2_PolicyAuthorizeNV_Marshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_PolicyAuthorizeNV_Unmarshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+UINT16
+TPM2_PolicyAuthorizeNV_Parameter_Marshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_PolicyAuthorizeNV_Parameter_Unmarshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+void
+TPM2_PolicyAuthorizeNV_CalculateUpdate(
+TPM_ALG_ID hashAlg,
+TPM2B_DIGEST *policyDigest,
+PolicyAuthorizeNV_In *policyAuthorizeNV_In,
+TPM2B_NAME *nvName
+);
+
+#endif //_POLICYAUTHORIZENV
+
+#ifndef _ENCRYPTDECRYPT2_H
+#define _ENCRYPTDECRYPT2_H
+
+#define TPM2_EncryptDecrypt2_HdlIn_KeyHandle  (0)
+#define TPM2_EncryptDecrypt2_HdlCntIn  (1)
+#define TPM2_EncryptDecrypt2_HdlCntOut  (0)
+#define TPM2_EncryptDecrypt2_SessionCnt  (1)
+
+typedef struct {
+    TPM2B_MAX_BUFFER                    inData;
+    TPMI_YES_NO                         decrypt;
+    TPMI_ALG_SYM_MODE                   mode;
+    TPM2B_IV                            ivIn;
+} EncryptDecrypt2_In;
+
+typedef struct {
+    TPM2B_MAX_BUFFER                    outData;
+    TPM2B_IV                            ivOut;
+} EncryptDecrypt2_Out;
+
+UINT16
+TPM2_EncryptDecrypt2_Marshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_EncryptDecrypt2_Unmarshal(
+SESSION *sessionTable,
+UINT32 sessionCnt,
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+UINT16
+TPM2_EncryptDecrypt2_Parameter_Marshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+TPM_RC
+TPM2_EncryptDecrypt2_Parameter_Unmarshal(
+Marshal_Parms *parms,
+BYTE **buffer,
+INT32 *size
+);
+
+#endif //_ENCRYPTDECRYPT2_H
 
 UINT16
 Command_Marshal(

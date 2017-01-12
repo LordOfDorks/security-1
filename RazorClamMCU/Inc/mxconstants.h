@@ -4,7 +4,7 @@
   * Description        : This file contains the common defines of the application
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2017 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -38,6 +38,8 @@
 
 /* Private define ------------------------------------------------------------*/
 
+#define SPI5_CS_Pin GPIO_PIN_3
+#define SPI5_CS_GPIO_Port GPIOE
 #define User_Blue_Button_Pin GPIO_PIN_13
 #define User_Blue_Button_GPIO_Port GPIOC
 #define MCO_Pin GPIO_PIN_0

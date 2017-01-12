@@ -733,50 +733,56 @@ DetectTpm(
 )
 {
     HAL_StatusTypeDef result = HAL_ERROR;
+    uint32_t regData = 0;
+    uint32_t tpmResult = TPM_RC_SUCCESS;
 
-    if(RequestLocality(TIS_LOCALITY_0) == HAL_OK)
+    // Acquire locality 0
+    if(RequestLocality(TIS_LOCALITY_0) != HAL_OK)
     {
-        uint32_t regData = 0;
-        if((ReadRegisterI2C(TCGTIS_I2C_TPM_I2C_INTERFACE_CAPABILITY, (uint8_t*)&regData, sizeof(regData)) == HAL_OK) &&
-           ((regData & 0x000001F0) == TCGTIS_I2C_TPM_I2C_INTERFACE_CAPABILITY_TPM20))
-        {
-            uint32_t tpmResult = TPM_RC_SUCCESS;
-            // Found something that responds like a TCG SPI TIS TPM 2.0
-            uint8_t GuardTime = ((regData & 0x0001FE00) >> 9);
-            RR_GuardTime = (regData & 0x00100000) ? GuardTime : 0;
-            WR_GuardTime = (regData & 0x00080000) ? GuardTime : 0;
-            RW_GuardTime = (regData & 0x00040000) ? GuardTime : 0;
-            WW_GuardTime = (regData & 0x00020000) ? GuardTime : 0;
-            do
-            {
-                tpmResult = TpmStartup(TPM_SU_CLEAR);
-                if(tpmResult == TPM_RC_FAILURE)
-                {
-                    HAL_Delay(100);
-                }
-            }
-            while (tpmResult == TPM_RC_FAILURE);
-            if((tpmResult != TPM_RC_SUCCESS) && (tpmResult != TPM_RC_INITIALIZE))
-            {
-                goto Cleanup;
-            }
-            do
-            {
-                tpmResult = TpmSelfTest();
-                if(tpmResult == TPM_RC_FAILURE)
-                {
-                    HAL_Delay(100);
-                }
-            }
-            while (tpmResult == TPM_RC_FAILURE);
-            if((tpmResult != TPM_RC_SUCCESS) && (tpmResult != TPM_RC_INITIALIZE))
-            {
-                goto Cleanup;
-            }
-        }
-        ReleaseLocality();
+        goto Cleanup;
     }
 
+    if((ReadRegisterI2C(TCGTIS_I2C_TPM_I2C_INTERFACE_CAPABILITY, (uint8_t*)&regData, sizeof(regData)) != HAL_OK) ||
+       ((regData & 0x000001F0) != TCGTIS_I2C_TPM_I2C_INTERFACE_CAPABILITY_TPM20))
+    {
+        goto Cleanup;
+    }
+
+    // Found something that responds like a TCG SPI TIS TPM 2.0. Let's initialize it
+    uint8_t GuardTime = ((regData & 0x0001FE00) >> 9);
+    RR_GuardTime = (regData & 0x00100000) ? GuardTime : 0;
+    WR_GuardTime = (regData & 0x00080000) ? GuardTime : 0;
+    RW_GuardTime = (regData & 0x00040000) ? GuardTime : 0;
+    WW_GuardTime = (regData & 0x00020000) ? GuardTime : 0;
+    do
+    {
+        tpmResult = TpmStartup(TPM_SU_CLEAR);
+        if(tpmResult == TPM_RC_FAILURE)
+        {
+            HAL_Delay(100);
+        }
+    }
+    while (tpmResult == TPM_RC_FAILURE);
+    if((tpmResult != TPM_RC_SUCCESS) && (tpmResult != TPM_RC_INITIALIZE))
+    {
+        goto Cleanup;
+    }
+    do
+    {
+        tpmResult = TpmSelfTest();
+        if(tpmResult == TPM_RC_FAILURE)
+        {
+            HAL_Delay(100);
+        }
+    }
+    while (tpmResult == TPM_RC_FAILURE);
+    if((tpmResult != TPM_RC_SUCCESS) && (tpmResult != TPM_RC_INITIALIZE))
+    {
+        goto Cleanup;
+    }
+
+    // Job well done - Release the TPM
+    ReleaseLocality();
     result = HAL_OK;
 
 Cleanup:
@@ -1126,7 +1132,7 @@ TcgSpiFullDuplex(
     while(!(hdrBuffer[3] & 0x01))
     {
         // Give the TPM some time to get ready
-        HAL_Delay(1);
+        SpinWait(5);
 
         // Check for timeout
         if(deadline < HAL_GetTick())
@@ -1135,7 +1141,7 @@ TcgSpiFullDuplex(
             goto Cleanup;
         }
 
-        // Read the next byte to see is we still have to wait
+        // Read the next byte immediately to see is we still have to wait
         hdrBuffer[3] = 0;
         if((result = HAL_SPI_TransmitReceive(&TPMSPIBUSHANDLE, &hdrBuffer[3], &hdrBuffer[3], sizeof(uint8_t), 10)) != HAL_OK)
         {
@@ -1181,27 +1187,65 @@ DetectTpm(
 )
 {
     HAL_StatusTypeDef result = HAL_ERROR;
+    uint32_t regData = 0;
+    uint32_t tpmResult = TPM_RC_SUCCESS;
 
-    // Make sure CS is peoperly initialized
+    // Make sure CS is initialized to HIGH level
     HAL_GPIO_WritePin(TPMSPIBUSCSPORT, TPMSPIBUSCSPIN, GPIO_PIN_SET);
 
-    if(RequestLocality(TIS_LOCALITY_0) == HAL_OK)
+    // The SPI_CLK on the STM32F429ZI MCU in on a HIGH level right out of the gate
+    // The NOOP below will make sure that the SPI bus is in a functional state while
+    // the TPM may or may not ignore the register read - This code most certainly does.
+    ReadRegisterSPI(TCGTIS_SPI_ACCESS_REGISTER, &regData, sizeof(uint8_t));
+
+    // Acquire locality 0
+    if(RequestLocality(TIS_LOCALITY_0) != HAL_OK)
     {
-        uint32_t regData = 0;
-        if((ReadRegisterSPI(TCGTIS_SPI_STS_REGISTER, (uint8_t*)&regData, sizeof(regData)) == HAL_OK) &&
-           ((regData & 0x0C000000) == TIS_STS_TPMFAMILY_20))
-        {
-            uint32_t tpmResult = TPM_RC_SUCCESS;
-            // Found something that responds like a TCG SPI TIS TPM 2.0
-            tpmResult = TpmStartup();
-            if((tpmResult == TPM_RC_SUCCESS) || (tpmResult == TPM_RC_FAILURE))
-            {
-                result = HAL_OK;
-            }
-        }
-        ReleaseLocality();
+        goto Cleanup;
     }
 
+    // Read the Interface Capability register
+    if((ReadRegisterSPI(TCGTIS_SPI_INTF_CAPABILITY_REGISTER, (uint8_t*)&regData, sizeof(regData)) != HAL_OK) ||
+       (((regData & TIS_INTF_INTERFACEVERSIONMASK) != TIS_INTF_INTERFACEVERSION12) &&
+        ((regData & TIS_INTF_INTERFACEVERSIONMASK) != TIS_INTF_INTERFACEVERSION13) &&
+        ((regData & TIS_INTF_INTERFACEVERSIONMASK) != TIS_INTF_INTERFACEVERSIONRESERVED)))
+    {
+        goto Cleanup;
+    }
+
+    // Found something that responds like a TCG SPI TIS TPM 2.0 let's initialize it
+    do
+    {
+        tpmResult = TpmStartup(TPM_SU_CLEAR);
+        if(tpmResult == TPM_RC_FAILURE)
+        {
+            HAL_Delay(100);
+        }
+    }
+    while (tpmResult == TPM_RC_FAILURE);
+    if((tpmResult != TPM_RC_SUCCESS) && (tpmResult != TPM_RC_INITIALIZE))
+    {
+        goto Cleanup;
+    }
+    do
+    {
+        tpmResult = TpmSelfTest();
+        if(tpmResult == TPM_RC_FAILURE)
+        {
+            HAL_Delay(100);
+        }
+    }
+    while (tpmResult == TPM_RC_FAILURE);
+    if((tpmResult != TPM_RC_SUCCESS) && (tpmResult != TPM_RC_INITIALIZE))
+    {
+        goto Cleanup;
+    }
+
+    // Job well done
+    ReleaseLocality();
+    result = HAL_OK;
+
+Cleanup:
     return result;
 }
 

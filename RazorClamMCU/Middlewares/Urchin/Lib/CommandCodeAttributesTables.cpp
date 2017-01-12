@@ -492,7 +492,7 @@ THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             NOT_IMPLEMENTED,               
 #endif
 #if CC_ReadClock == YES                      // 0x00000181 - TPM2_ReadClock
-            IS_IMPLEMENTED + NO_SESSIONS,
+            IS_IMPLEMENTED,
 #else
             NOT_IMPLEMENTED,               
 #endif
@@ -557,9 +557,34 @@ THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             NOT_IMPLEMENTED,               
 #endif
 #if CC_EC_Ephemeral == YES                   // 0x0000018E - TPM2_EC_Ephemeral
-            IS_IMPLEMENTED + ENCRYPT_2 
+            IS_IMPLEMENTED + ENCRYPT_2,
 #else
-            NOT_IMPLEMENTED                
+            NOT_IMPLEMENTED,
+#endif
+#if CC_PolicyNVWritten == YES               // 0x0000018F - TPM_PolicyNVWritten
+            IS_IMPLEMENTED,
+#else
+            NOT_IMPLEMENTED,
+#endif
+#if CC_PolicyTemplate == YES                //0x00000190 - TPM_PolicyTemplate
+            IS_IMPLEMENTED + DECRYPT_2,
+#else
+            NOT_IMPLEMENTED,
+#endif
+#if CC_CreateLoaded == YES                  // 0x00000191 - TPM_CreateLoaded
+            IS_IMPLEMENTED + HANDLE_1_USER + DECRYPT_2 + RESPONSE_HANDLE + ENCRYPT_2,
+#else
+            NOT_IMPLEMENTED,
+#endif
+#if CC_PolicyAuthorizeNV == YES             // 0x00000192 - TPM_PolicyAuthorizeNV
+            IS_IMPLEMENTED + HANDLE_1_USER,
+#else
+            NOT_IMPLEMENTED,
+#endif
+#if CC_EncryptDecrypt2 == YES               // 0x00000193 - TPM_EncryptDecrypt2
+            IS_IMPLEMENTED + HANDLE_1_USER + ENCRYPT_2 + DECRYPT_2
+#else
+            NOT_IMPLEMENTED
 #endif
 };
 
@@ -888,4 +913,21 @@ THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #if CC_NV_Certify == YES
            {(UINT16) TPM_CC_NV_Certify, 0, 0, 0, 0, 3, 0, 0, 0}, 
 #endif
+
+#if CC_PolicyNVWritten == YES
+           {(UINT16) TPM_CC_PolicyNVWritten, 0, 0, 0, 0, 3, 0, 0, 0}, 
+#endif
+#if CC_PolicyTemplate == YES
+           {(UINT16) TPM_CC_PolicyTemplate, 0, 0, 0, 0, 3, 0, 0, 0}, 
+#endif
+#if CC_CreateLoaded == YES
+           {(UINT16) TPM_CC_CreateLoaded, 0, 0, 0, 0, 3, 0, 0, 0}, 
+#endif
+#if CC_PolicyAuthorizeNV == YES
+           {(UINT16) TPM_CC_PolicyAuthorizeNV, 0, 0, 0, 0, 3, 0, 0, 0}, 
+#endif
+#if CC_EncryptDecrypt2 == YES
+           {(UINT16) TPM_CC_EncryptDecrypt2, 0, 0, 0, 0, 3, 0, 0, 0}, 
+#endif
+
 };

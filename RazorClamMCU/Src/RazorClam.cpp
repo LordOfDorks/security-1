@@ -976,6 +976,7 @@ Cleanup:
     return result;
 }
 
+#ifndef TPM20REV136
 static UINT32
 LoadAik(
         void
@@ -1039,6 +1040,7 @@ Cleanup:
     }
     return result;
 }
+#endif
 
 UINT32
 ProtectPlatformData(
@@ -1055,7 +1057,14 @@ ProtectPlatformData(
         PolicyAuthValue_In policyAuthValue;
         StartAuthSession_In startAuthSession;
         ReadPublic_In readPublic;
+#ifdef TPM20REV136
+        CreatePrimary_In createPrimary;
+        ContextSave_In contextSave;
+        ContextLoad_In contextLoad;
+        EncryptDecrypt2_In encryptDecrypt2;
+#else
         EncryptDecrypt_In encryptDecrypt;
+#endif
     } in;
     union
     {
@@ -1063,7 +1072,14 @@ ProtectPlatformData(
         PolicyAuthValue_Out policyAuthValue;
         StartAuthSession_Out startAuthSession;
         ReadPublic_In readPublic;
+#ifdef TPM20REV136
+        CreatePrimary_Out createPrimary;
+        ContextSave_Out contextSave;
+        ContextLoad_Out contextLoad;
+        EncryptDecrypt2_Out encryptDecrypt2;
+#else
         EncryptDecrypt_Out encryptDecrypt;
+#endif
     } out;
     SESSION policySession = {0};
     HASH_STATE hash = {0};
@@ -1071,6 +1087,9 @@ ProtectPlatformData(
     TPM2B_DIGEST pcrDigest;
     TPML_PCR_SELECTION pcrs;
     TPML_DIGEST pcrValues = {0};
+#ifdef TPM20REV136
+    TPM2B_DIGEST policyDigest = {0};
+#endif
 
     // Calculate the expected PCR table for the policy
     pcrs.count = 1;
@@ -1122,6 +1141,65 @@ ProtectPlatformData(
     EXECUTE_TPM_CALL(FALSE, TPM2_PolicyPCR);
     policySession = parms.objectTableIn[TPM2_PolicyPCR_HdlIn_PolicySession].session;
 
+#ifdef TPM20REV136
+    // Derive or load the primary aesDpk. We are only going to create the key once
+    // every boot and then reload it every time we need it thereafter until reboot
+    // The PCR/keyAuth property of the key (both a function of the compoundIdentity)
+    // will ensure that only the boot code can use it even if the key is accessed
+    // by a man-in-the-middle directly in the TPM
+    if(volatileData.dpkBlob.contextBlob.t.size == 0)
+    {
+        // Calculate the PCR policy - Any change here will result in a different key
+        // policydigest = PolicyAuthValue() || PolicyPCR(PCR[0..7])
+        policyDigest.t.size = SHA256_DIGEST_SIZE;
+        TPM2_PolicyAuthValue_CalculateUpdate(TPM_ALG_SHA256, &policyDigest, &in.policyAuthValue);
+        in.policyPcr.pcrs = pcrs;
+        in.policyPcr.pcrDigest = pcrDigest;
+        TPM2_PolicyPCR_CalculateUpdate(TPM_ALG_SHA256, &policyDigest, &in.policyPcr);
+
+        // Derive primary PCR bound AES key - any changes here will create a different key
+        sessionTable[0] = volatileData.ekSeededSession;
+        sessionTable[0].attributes.decrypt = YES;
+        INITIALIZE_CALL_BUFFERS(TPM2_CreatePrimary, &in.createPrimary, &out.createPrimary);
+        parms.objectTableIn[TPM2_CreatePrimary_HdlIn_PrimaryHandle].entity.handle = TPM_RH_PLATFORM;
+        UINT32_TO_BYTE_ARRAY(parms.objectTableIn[TPM2_CreatePrimary_HdlIn_PrimaryHandle].entity.handle, parms.objectTableIn[TPM2_CreatePrimary_HdlIn_PrimaryHandle].entity.name.t.name);
+        parms.objectTableIn[TPM2_CreatePrimary_HdlIn_PrimaryHandle].entity.name.t.size = sizeof(parms.objectTableIn[TPM2_CreatePrimary_HdlIn_PrimaryHandle].entity.handle);
+        in.createPrimary.inSensitive.t.sensitive.data = *((TPM2B_SENSITIVE_DATA*)&persistedData.compoundIdentity);
+        in.createPrimary.inSensitive.t.sensitive.userAuth = persistedData.compoundIdentity;
+        in.createPrimary.inPublic.t.publicArea.type = TPM_ALG_SYMCIPHER;
+        in.createPrimary.inPublic.t.publicArea.nameAlg = TPM_ALG_SHA256;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.fixedTPM = SET;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.fixedParent = SET;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.sensitiveDataOrigin = SET;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.adminWithPolicy = SET;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.noDA = SET;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.decrypt = SET;
+        in.createPrimary.inPublic.t.publicArea.objectAttributes.sign = SET;
+        in.createPrimary.inPublic.t.publicArea.parameters.symDetail.algorithm = TPM_ALG_AES;
+        in.createPrimary.inPublic.t.publicArea.parameters.symDetail.keyBits.sym = 128;
+        in.createPrimary.inPublic.t.publicArea.parameters.symDetail.mode.sym = TPM_ALG_CFB;
+        in.createPrimary.inPublic.t.publicArea.authPolicy = policyDigest;
+        EXECUTE_TPM_CALL(FALSE, TPM2_CreatePrimary);
+        sessionTable[0].attributes = volatileData.ekSeededSession.attributes;
+        volatileData.ekSeededSession = sessionTable[0];
+        volatileData.dpkObject = parms.objectTableOut[TPM2_CreatePrimary_HdlOut_ObjectHandle];
+        volatileData.dpkObject.obj.authValue = persistedData.compoundIdentity;
+
+        // Create a backup copy of that object
+        INITIALIZE_CALL_BUFFERS(TPM2_ContextSave, &in.contextSave, &out.contextSave);
+        parms.objectTableIn[TPM2_ContextSave_HdlIn_SaveHandle] = volatileData.dpkObject;
+        EXECUTE_TPM_CALL(FALSE, TPM2_ContextSave);
+        volatileData.dpkBlob = out.contextSave.context;
+        PrintTPM2B("DPKeyName", (TPM2B*)&volatileData.dpkObject.obj.name);
+    }
+    else
+    {
+        INITIALIZE_CALL_BUFFERS(TPM2_ContextLoad, &in.contextLoad, &out.contextLoad);
+        in.contextLoad.context = volatileData.dpkBlob;
+        EXECUTE_TPM_CALL(FALSE, TPM2_ContextLoad);
+        volatileData.dpkObject.obj.handle = parms.objectTableOut[TPM2_ContextLoad_HdlOut_LoadedHandle].obj.handle;
+    }
+#else
     // Read the aesDpk Name
     INITIALIZE_CALL_BUFFERS(TPM2_ReadPublic, &in.readPublic, &out.readPublic);
     parms.objectTableIn[TPM2_ReadPublic_HdlIn_PublicKey].generic.handle = TPM_PLATFORM_DPK_HANDLE;
@@ -1138,12 +1216,33 @@ ProtectPlatformData(
     volatileData.ekSeededSession = sessionTable[0];
     aesKey = parms.objectTableIn[0];
     aesKey.obj.authValue = persistedData.compoundIdentity;
+#endif
 
     // Perform the encryption or decryption
     sessionTable[0] = policySession;
     sessionTable[0].attributes.continueSession = NO; // Terminate the session with this command
 
-    // Lotsa red tape here:
+#ifdef TPM20REV136
+    // Always protect the clear text in transit on the wire
+    if(decrypt == YES)
+    {
+        sessionTable[0].attributes.encrypt = YES;
+    }
+    else
+    {
+        sessionTable[0].attributes.decrypt = YES;
+    }
+    INITIALIZE_CALL_BUFFERS(TPM2_EncryptDecrypt2, &in.encryptDecrypt2, &out.encryptDecrypt2);
+    parms.objectTableIn[TPM2_EncryptDecrypt2_HdlIn_KeyHandle] = volatileData.dpkObject;
+    in.encryptDecrypt2.inData.t.size = dataSize;
+    MemoryCopy(in.encryptDecrypt2.inData.t.buffer, dataPtr, in.encryptDecrypt2.inData.t.size, sizeof(in.encryptDecrypt2.inData.t.buffer));
+    in.encryptDecrypt2.decrypt = decrypt;
+    in.encryptDecrypt2.mode = TPM_ALG_NULL;
+    in.encryptDecrypt2.ivIn.t.size = 16; // IV is zero bytes
+    EXECUTE_TPM_CALL(FALSE, TPM2_EncryptDecrypt2);
+    MemoryCopy(dataPtr, out.encryptDecrypt2.outData.t.buffer, out.encryptDecrypt2.outData.t.size, dataSize);
+#else
+    // Lotsa red tape here for all TPM < Rev 1.36:
     // Oddly clear text protection on the encrypt path is not supported in the specification.
     // DWooten said this was an oversight in the spec and the response parameters are ordered
     // wrong. Unfortunately there is no hope for TPM2_EncryptDecrypt() and he will add a new
@@ -1166,6 +1265,74 @@ ProtectPlatformData(
     in.encryptDecrypt.ivIn.t.size = 16; // IV is zero bytes
     EXECUTE_TPM_CALL(FALSE, TPM2_EncryptDecrypt);
     MemoryCopy(dataPtr, out.encryptDecrypt.outData.t.buffer, out.encryptDecrypt.outData.t.size, dataSize);
+#endif
+
+Cleanup:
+#ifdef TPM20REV136
+    if(volatileData.dpkObject.obj.handle != 0)
+    {
+        FlushContext(&volatileData.dpkObject);
+    }
+#endif
+    if(result != TPM_RC_SUCCESS)
+    {
+        // Copy the EKSeeded session back out in case of an error
+        volatileData.ekSeededSession = sessionTable[0];
+    }
+    return result;
+}
+#ifndef IFXTPM
+#ifdef TPM20REV136
+static UINT32
+CheckTickSyncronized(
+    void
+    )
+{
+    UINT32 result = TPM_RC_SUCCESS;
+    DEFINE_CALL_BUFFERS;
+    UINT32 mcuTick = 0;
+    union
+    {
+        ReadClock_In readClock;
+    } in;
+    union
+    {
+        ReadClock_Out readClock;
+    } out;
+
+    // Get the clock
+    sessionTable[0] = volatileData.ekSeededSession;
+    sessionTable[0].attributes.audit = SET;
+    INITIALIZE_CALL_BUFFERS(TPM2_ReadClock, &in.readClock, &out.readClock);
+    EXECUTE_TPM_CALL(FALSE, TPM2_ReadClock);
+    mcuTick = HAL_GetTick();
+    sessionTable[0].attributes = volatileData.ekSeededSession.attributes;
+    volatileData.ekSeededSession = sessionTable[0];
+
+    if(volatileData.tickOffest != 0)
+    {
+        // Check if we are still in the same boot session
+        if((volatileData.resetCount != out.readClock.currentTime.clockInfo.resetCount) ||
+           (volatileData.restartCount != out.readClock.currentTime.clockInfo.restartCount))
+        {
+            result = TPM_RC_FAILURE;
+            goto Cleanup;
+        }
+
+        // Make sure the tick count remains within +-1s of each other
+        if((((INT64)out.readClock.currentTime.clockInfo.clock - mcuTick) < (volatileData.tickOffest - 1000)) ||
+           (((INT64)out.readClock.currentTime.clockInfo.clock - mcuTick) > (volatileData.tickOffest + 1000)))
+        {
+            result = TPM_RC_FAILURE;
+            goto Cleanup;
+        }
+        volatileData.tickDrift = volatileData.tickOffest - (out.readClock.currentTime.clockInfo.clock - mcuTick);
+    }
+
+    // Record the offset to avoid slow drift.
+    volatileData.tickOffest = out.readClock.currentTime.clockInfo.clock - mcuTick;
+    volatileData.resetCount = out.readClock.currentTime.clockInfo.resetCount;
+    volatileData.restartCount = out.readClock.currentTime.clockInfo.restartCount;
 
 Cleanup:
     if(result != TPM_RC_SUCCESS)
@@ -1175,14 +1342,13 @@ Cleanup:
     }
     return result;
 }
-
+#else
 static UINT32
 CheckTickSyncronized(
         void
         )
 {
     UINT32 result = TPM_RC_SUCCESS;
-#ifndef IFXTPM
     DEFINE_CALL_BUFFERS;
     UINT32 mcuTick = 0;
     union
@@ -1248,11 +1414,19 @@ Cleanup:
         // Copy the EKSeeded session back out in case of an error
         volatileData.ekSeededSession = sessionTable[0];
     }
-#else
-    printf("CheckTickSyncronized: TPM_CC_GetTime() is not implemented on TPM.\r\n");
-#endif
     return result;
 }
+#endif
+#else // IFXTPM
+CheckTickSyncronized(
+    void
+    )
+{
+    UINT32 result = TPM_RC_SUCCESS;
+    printf("CheckTickSyncronized: Necessary ordinals not implemented on this TPM.\r\n");
+    return result;
+}
+#endif
 
 static UINT32
 MeasureEvent(

@@ -5,7 +5,9 @@
 #define TPM_PLATFORM_LOCKDOWN_POLICY_NV_INDEX (0x01000000 | (TPM_SECUREBOOT_NV_RANGE << 8))
 #define TPM_PLATFORM_COUNTERS_NV_INDEX (0x01000010 | (TPM_SECUREBOOT_NV_RANGE << 8))
 #define PLATFORM_POLICY_MAX_ENTRIES 10
+#ifndef TPM20REV136
 #define TPM_PLATFORM_DPK_HANDLE 0x81800001
+#endif
 
 #define RAZORCLAMPERSISTEDDATA (0x4144504d4c435a52) //'ADPMLCZR' RaZorCLaM Persisted Data Area
 #define RAZORCLAMPERSISTEDVERSION (0x00000001)
@@ -84,8 +86,13 @@ typedef struct
     ANY_OBJECT        storageOwnerObject;
     ANY_OBJECT        ekObject;
     ANY_OBJECT        srkObject;
+#ifdef TPM20REV136
+    ANY_OBJECT        dpkObject;
+    TPMS_CONTEXT      dpkBlob;
+#else
     ANY_OBJECT        hmacAikObject;
     TPMS_CONTEXT      hmacAikBlob;
+#endif
     SESSION           ekSeededSession;
     UINT32            resetCount;
     UINT32            restartCount;

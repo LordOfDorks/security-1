@@ -15,6 +15,7 @@
 
 #define ADDR_FLASH_SECTOR_23 ((uint32_t)0x081E0000)
 
+#ifndef TPM20REV136
 UINT32
 CreatePlatformDataProtectionKey(
     void
@@ -132,6 +133,7 @@ Cleanup:
     }
     return result;
 }
+#endif
 
 HAL_StatusTypeDef
 TpmUtilStorePersistedData(
@@ -984,14 +986,14 @@ TpmUtilClearAndProvision(
         printf("MeasureEventConfidential() failed with 0x%03x.\r\n", retVal);
         goto Cleanup;
     }
-
+#ifndef TPM20REV136
     if((retVal = CreatePlatformDataProtectionKey()) != TPM_RC_SUCCESS)
     {
         printf("CreatePlatformDataProtectionKey() failed with 0x%03x.\r\n", retVal);
         goto Cleanup;
     }
     printf("CreatePlatformDataProtectionKey() complete.\r\n");
-
+#endif
     // Encrypt the authValues to be persisted
     if(((retVal = ProtectPlatformData(persistedData.lockoutAuth.t.buffer, persistedData.lockoutAuth.t.size, NO)) != TPM_RC_SUCCESS) ||
        ((retVal = ProtectPlatformData(persistedData.endorsementAuth.t.buffer, persistedData.endorsementAuth.t.size, NO)) != TPM_RC_SUCCESS) ||
