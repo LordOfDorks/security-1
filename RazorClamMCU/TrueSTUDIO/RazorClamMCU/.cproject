@@ -68,7 +68,7 @@
 									<listOptionValue builtIn="false" value="TPMSPIBUSCSPIN=SPI5_CS_Pin" />
 									<listOptionValue builtIn="false" value="TPM20REV136" />
 									<listOptionValue builtIn="false" value="STMTPM" />
-									<listOptionValue builtIn="false" value="TISI2C" />
+									<listOptionValue builtIn="false" value="TISSPI" />
 									<listOptionValue builtIn="false" value="URCHIN_DEBUG=1" />
 								</option>
 								<inputType id="com.atollic.truestudio.as.input.374932590" name="Input" superClass="com.atollic.truestudio.as.input" />
@@ -112,7 +112,7 @@
 									<listOptionValue builtIn="false" value="TPMSPIBUSCSPIN=SPI5_CS_Pin" />
 									<listOptionValue builtIn="false" value="TPM20REV136" />
 									<listOptionValue builtIn="false" value="STMTPM" />
-									<listOptionValue builtIn="false" value="TISI2C" />
+									<listOptionValue builtIn="false" value="TISSPI" />
 									<listOptionValue builtIn="false" value="URCHIN_DEBUG=1" />
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1854274048" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" value="com.atollic.truestudio.common_options.target.endianess.little" valueType="enumerated" />
@@ -156,7 +156,7 @@
 									<listOptionValue builtIn="false" value="TPMSPIBUSCSPIN=SPI5_CS_Pin" />
 									<listOptionValue builtIn="false" value="TPM20REV136" />
 									<listOptionValue builtIn="false" value="STMTPM" />
-									<listOptionValue builtIn="false" value="TISI2C" />
+									<listOptionValue builtIn="false" value="TISSPI" />
 									<listOptionValue builtIn="false" value="URCHIN_DEBUG=1" />
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.176262651" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" value="com.atollic.truestudio.common_options.target.endianess.little" valueType="enumerated" />
